@@ -1,7 +1,6 @@
-# 🏗️ Modern Analytics Engineering with dbt + Snowflake
+# Modern Analytics Engineering with dbt + Snowflake
 
-[![CI Status](https://github.com/yourusername/dbt-snowflake-analytics-project/workflows/CI/badge.svg)](https://github.com/yourusername/dbt-snowflake-analytics-project/actions)
-[![Deploy Status](https://github.com/yourusername/dbt-snowflake-analytics-project/workflows/Deploy/badge.svg)](https://github.com/yourusername/dbt-snowflake-analytics-project/actions)
+
 [![dbt Version](https://img.shields.io/badge/dbt-1.7.0-orange.svg)](https://docs.getdbt.com/)
 [![Snowflake](https://img.shields.io/badge/Snowflake-Ready-blue.svg)](https://www.snowflake.com/)
 
@@ -127,16 +126,3 @@ git push origin feature/customer-segmentation
 | [docs/data_dictionary.md](docs/data_dictionary.md) | Business definitions |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development guidelines |
 
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-**⭐ Star this repository if you find it helpful!**
-
-*Built with ❤️ for the analytics engineering community*
