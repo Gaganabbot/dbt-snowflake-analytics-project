@@ -1,0 +1,93 @@
+version: 2
+
+sources:
+  - name: marketing
+    description: "Marketing campaign and advertising performance data"
+    database: "{{ env_var('SNOWFLAKE_RAW_DATABASE', 'RAW_DATA') }}"
+    schema: marketing
+    tables:
+      - name: campaigns
+        description: "Marketing campaign definitions and metadata"
+        loaded_at_field: updated_at
+        freshness:
+          warn_after: {count: 24, period: hour}
+          error_after: {count: 48, period: hour}
+        columns:
+          - name: campaign_id
+            description: "Primary key for campaigns"
+            tests:
+              - unique
+              - not_null
+          - name: campaign_name
+            description: "Human-readable campaign name"
+            tests:
+              - not_null
+          - name: channel
+            description: "Marketing channel (email, social, search, etc.)"
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['email', 'social', 'search', 'display', 'direct', 'referral']
+          - name: start_date
+            description: "Campaign start date"
+            tests:
+              - not_null
+          - name: end_date
+            description: "Campaign end date (null for ongoing)"
+          - name: budget
+            description: "Total campaign budget in USD"
+            tests:
+              - dbt_expectations.expect_column_values_to_be_between:
+                  min_value: 0
+                  max_value: 1000000
+          - name: created_at
+            description: "When the campaign was created"
+          - name: updated_at
+            description: "When the campaign was last updated"
+
+      - name: ad_spend
+        description: "Daily advertising spend and performance metrics by campaign"
+        loaded_at_field: date
+        freshness:
+          warn_after: {count: 1, period: day}
+          error_after: {count: 2, period: day}
+        columns:
+          - name: campaign_id
+            description: "Foreign key to campaigns table"
+            tests:
+              - not_null
+              - relationships:
+                  to: source('marketing', 'campaigns')
+                  field: campaign_id
+          - name: date
+            description: "Date of the advertising metrics"
+            tests:
+              - not_null
+          - name: spend
+            description: "Amount spent on this day in USD"
+            tests:
+              - not_null
+              - dbt_expectations.expect_column_values_to_be_between:
+                  min_value: 0
+                  max_value: 100000
+          - name: impressions
+            description: "Number of ad impressions"
+            tests:
+              - not_null
+              - dbt_expectations.expect_column_values_to_be_between:
+                  min_value: 0
+                  max_value: 10000000
+          - name: clicks
+            description: "Number of ad clicks"
+            tests:
+              - not_null
+              - dbt_expectations.expect_column_values_to_be_between:
+                  min_value: 0
+                  max_value: 1000000
+          - name: conversions
+            description: "Number of conversions (purchases)"
+            tests:
+              - not_null
+              - dbt_expectations.expect_column_values_to_be_between:
+                  min_value: 0
+                  max_value: 100000

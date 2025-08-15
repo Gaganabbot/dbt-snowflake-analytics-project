@@ -1,0 +1,79 @@
+name: 'modern_analytics'
+version: '1.0.0'
+config-version: 2
+
+profile: 'modern_analytics'
+
+model-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+docs-paths: ["docs"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+vars:
+  start_date: '2020-01-01'
+  end_date: '2024-12-31'
+  timezone: 'UTC'
+  high_value_threshold: 1000
+  medium_value_threshold: 500
+  low_value_threshold: 100
+  high_ctr_threshold: 0.05
+  high_conversion_threshold: 0.10
+
+models:
+  modern_analytics:
+    staging:
+      +materialized: view
+      +schema: staging
+      +docs:
+        node_color: "#228B22"
+      ecommerce:
+        +tags: ["staging", "ecommerce"]
+      marketing:
+        +tags: ["staging", "marketing"]
+
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+      +tags: ["intermediate"]
+      +docs:
+        node_color: "#4682B4"
+
+    marts:
+      +materialized: table
+      +schema: marts
+      +docs:
+        node_color: "#FF8C00"
+      core:
+        +schema: core
+        +tags: ["marts", "core"]
+      marketing:
+        +schema: marketing
+        +tags: ["marts", "marketing"]
+
+seeds:
+  modern_analytics:
+    +schema: reference
+    +tags: ["seeds", "reference"]
+
+snapshots:
+  modern_analytics:
+    +target_schema: snapshots
+    +tags: ["snapshots"]
+
+on-run-start:
+  - "{{ create_udfs() }}"
+  - "{{ log('Starting dbt run at ' ~ run_started_at, info=True) }}"
+
+on-run-end:
+  - "{{ log('Completed dbt run at ' ~ run_started_at, info=True) }}"
+  - "grant usage on schema {{ target.schema }} to role analyst"
+  - "grant select on all tables in schema {{ target.schema }} to role analyst"

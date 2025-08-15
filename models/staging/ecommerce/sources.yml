@@ -1,0 +1,110 @@
+version: 2
+
+sources:
+  - name: ecommerce
+    description: "Raw ecommerce data from the application database"
+    database: "{{ env_var('SNOWFLAKE_RAW_DATABASE', 'RAW_DATA') }}"
+    schema: ecommerce
+    tables:
+      - name: customers
+        description: "Customer information and profile data"
+        loaded_at_field: updated_at
+        freshness:
+          warn_after: {count: 6, period: hour}
+          error_after: {count: 12, period: hour}
+        columns:
+          - name: id
+            description: "Primary key for customers"
+            tests:
+              - unique
+              - not_null
+          - name: first_name
+            description: "Customer first name"
+            tests:
+              - not_null
+          - name: last_name
+            description: "Customer last name"
+            tests:
+              - not_null
+          - name: email
+            description: "Customer email address"
+            tests:
+              - unique
+              - not_null
+          - name: created_at
+            description: "When the customer record was created"
+            tests:
+              - not_null
+          - name: updated_at
+            description: "When the customer record was last updated"
+
+      - name: orders
+        description: "Order transactions and details"
+        loaded_at_field: updated_at
+        freshness:
+          warn_after: {count: 3, period: hour}
+          error_after: {count: 6, period: hour}
+        columns:
+          - name: id
+            description: "Primary key for orders"
+            tests:
+              - unique
+              - not_null
+          - name: customer_id
+            description: "Foreign key to customers table"
+            tests:
+              - not_null
+              - relationships:
+                  to: source('ecommerce', 'customers')
+                  field: id
+          - name: order_date
+            description: "Date the order was placed"
+            tests:
+              - not_null
+          - name: status
+            description: "Current order status"
+            tests:
+              - accepted_values:
+                  values: ['pending', 'processing', 'shipped', 'delivered', 'returned', 'cancelled']
+          - name: created_at
+            description: "When the order was created"
+            tests:
+              - not_null
+          - name: updated_at
+            description: "When the order was last updated"
+
+      - name: payments
+        description: "Payment transactions and methods"
+        loaded_at_field: created_at
+        freshness:
+          warn_after: {count: 1, period: hour}
+          error_after: {count: 3, period: hour}
+        columns:
+          - name: id
+            description: "Primary key for payments"
+            tests:
+              - unique
+              - not_null
+          - name: order_id
+            description: "Foreign key to orders table"
+            tests:
+              - not_null
+              - relationships:
+                  to: source('ecommerce', 'orders')
+                  field: id
+          - name: payment_method
+            description: "Payment method used"
+            tests:
+              - accepted_values:
+                  values: ['credit_card', 'debit_card', 'gift_card', 'bank_transfer', 'coupon', 'cash']
+          - name: amount
+            description: "Payment amount in cents"
+            tests:
+              - not_null
+              - dbt_expectations.expect_column_values_to_be_between:
+                  min_value: 0
+                  max_value: 1000000
+          - name: created_at
+            description: "When the payment was processed"
+            tests:
+              - not_null

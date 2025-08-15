@@ -1,0 +1,110 @@
+name: Deploy - Production dbt
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'models/**'
+      - 'macros/**'
+      - 'tests/**'
+      - 'seeds/**'
+      - 'snapshots/**'
+      - 'dbt_project.yml'
+      - 'packages.yml'
+  workflow_dispatch:
+
+env:
+  DBT_PROFILES_DIR: ${{ github.workspace }}
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_PROD_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_PROD_USER }}
+  SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PROD_PASSWORD }}
+  SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_PROD_ROLE }}
+  SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_PROD_DATABASE }}
+  SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_PROD_WAREHOUSE }}
+  SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_PROD_SCHEMA }}
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dbt
+      run: |
+        python -m pip install --upgrade pip
+        pip install dbt-snowflake==1.7.0
+
+    - name: Create production profiles.yml
+      run: |
+        mkdir -p ~/.dbt
+        cat > ~/.dbt/profiles.yml << EOF
+        modern_analytics:
+          target: prod
+          outputs:
+            prod:
+              type: snowflake
+              account: ${{ secrets.SNOWFLAKE_PROD_ACCOUNT }}
+              user: ${{ secrets.SNOWFLAKE_PROD_USER }}
+              password: ${{ secrets.SNOWFLAKE_PROD_PASSWORD }}
+              role: ${{ secrets.SNOWFLAKE_PROD_ROLE }}
+              database: ${{ secrets.SNOWFLAKE_PROD_DATABASE }}
+              warehouse: ${{ secrets.SNOWFLAKE_PROD_WAREHOUSE }}
+              schema: ${{ secrets.SNOWFLAKE_PROD_SCHEMA }}
+              threads: 8
+              client_session_keep_alive: false
+              query_tag: dbt-prod-deploy
+        EOF
+
+    - name: Debug production connection
+      run: dbt debug --profiles-dir ~/.dbt --target prod
+
+    - name: Install dbt dependencies  
+      run: dbt deps --profiles-dir ~/.dbt
+
+    - name: Run pre-deployment validations
+      run: |
+        dbt parse --profiles-dir ~/.dbt --target prod
+        dbt compile --profiles-dir ~/.dbt --target prod
+
+    - name: Create or update UDFs
+      run: dbt run-operation create_udfs --profiles-dir ~/.dbt --target prod
+
+    - name: Deploy seeds
+      run: dbt seed --profiles-dir ~/.dbt --target prod
+
+    - name: Deploy models
+      run: dbt run --profiles-dir ~/.dbt --target prod
+
+    - name: Run production tests
+      run: dbt test --profiles-dir ~/.dbt --target prod --store-failures
+
+    - name: Update snapshots
+      run: dbt snapshot --profiles-dir ~/.dbt --target prod
+
+    - name: Generate documentation
+      run: dbt docs generate --profiles-dir ~/.dbt --target prod
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dbt-prod-artifacts-${{ github.sha }}
+        path: |
+          target/manifest.json
+          target/catalog.json
+          target/run_results.json
+          target/index.html
+        retention-days: 30
+
+    - name: Notify deployment success
+      run: |
+        echo "🎉 Production deployment completed successfully!"
+        echo "📊 Analytics models are now live in production"

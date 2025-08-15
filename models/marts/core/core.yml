@@ -1,0 +1,93 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: "Customer dimension table with comprehensive lifetime metrics, segmentation, and behavioral analytics"
+    columns:
+      - name: customer_id
+        description: "Unique customer identifier"
+        tests:
+          - unique
+          - not_null
+      - name: customer_name
+        description: "Customer full name"
+      - name: customer_email
+        description: "Customer email address"
+        tests:
+          - unique
+      - name: lifetime_value
+        description: "Total amount spent by customer across all orders"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100000
+      - name: total_orders
+        description: "Total number of orders placed by customer"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000
+      - name: customer_lifecycle_stage
+        description: "Current lifecycle stage based on recency and behavior"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['New Customer', 'Active Customer', 'At Risk', 'Dormant', 'Lost Customer', 'Unclassified']
+      - name: customer_value_tier
+        description: "Value segment based on lifetime value"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['High Value', 'Medium Value', 'Low Value', 'Minimal Value']
+      - name: order_frequency_tier
+        description: "Frequency segment based on total orders"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Frequent Buyer', 'Regular Buyer', 'Repeat Buyer', 'One-time Buyer']
+
+  - name: fct_orders
+    description: "Orders fact table with comprehensive payment context and customer behavior metrics"
+    columns:
+      - name: order_id
+        description: "Unique order identifier"
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "Foreign key to dim_customers"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customers')
+              field: customer_id
+      - name: order_date
+        description: "Date the order was placed"
+        tests:
+          - not_null
+      - name: final_order_amount
+        description: "Final order amount after all payments"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 10000
+      - name: order_status
+        description: "Current status of the order"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['pending', 'processing', 'shipped', 'delivered', 'returned', 'cancelled']
+      - name: is_successful_order
+        description: "True if order was completed and fully paid without issues"
+        tests:
+          - not_null
+      - name: recognized_revenue
+        description: "Revenue recognized for this order (only for completed orders)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 10000

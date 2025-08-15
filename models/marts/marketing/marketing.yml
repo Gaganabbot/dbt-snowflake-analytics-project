@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: dim_campaigns
+    description: "Marketing campaigns dimension with performance aggregations"
+    columns:
+      - name: campaign_id
+        description: "Unique campaign identifier"
+        tests:
+          - unique
+          - not_null
+      - name: campaign_name
+        description: "Campaign name"
+      - name: marketing_channel
+        description: "Marketing channel (email, social, search, etc.)"
+        tests:
+          - accepted_values:
+              values: ['email', 'social', 'search', 'display', 'direct', 'referral']
+      - name: total_actual_spend
+        description: "Total amount spent on the campaign"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000000
+      - name: budget_utilization_rate
+        description: "Percentage of budget utilized"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 2
+
+  - name: fct_campaign_performance
+    description: "Daily campaign performance metrics"
+    columns:
+      - name: performance_id
+        description: "Unique identifier for campaign-date combination"
+        tests:
+          - unique
+          - not_null
+      - name: campaign_id
+        description: "Foreign key to dim_campaigns"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_campaigns')
+              field: campaign_id
+      - name: spend_date
+        description: "Date of performance metrics"
+        tests:
+          - not_null
+      - name: daily_spend
+        description: "Amount spent on this day"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 10000
+      - name: click_through_rate
+        description: "CTR for this day"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1

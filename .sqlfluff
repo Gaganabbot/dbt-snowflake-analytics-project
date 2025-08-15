@@ -1,0 +1,26 @@
+[sqlfluff]
+dialect = snowflake
+templater = dbt
+exclude_rules = L014,L016,L031
+max_line_length = 100
+
+[sqlfluff:indentation]
+indented_joins = False
+indented_ctes = False
+indented_using_on = True
+template_blocks_indent = True
+
+[sqlfluff:rules:L010]
+capitalisation_policy = upper
+
+[sqlfluff:rules:L030]  
+capitalisation_policy = upper
+
+[sqlfluff:rules:L040]
+capitalisation_policy = upper
+
+[sqlfluff:templater:dbt]
+project_dir = ./
+profiles_dir = ~/.dbt
+profile = modern_analytics
+target = dev
